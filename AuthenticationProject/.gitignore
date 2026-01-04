@@ -1,0 +1,47 @@
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors/IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.vscode/*
+
+# Build / output
+dist/
+build/
+.drizzle/
+
+# Database / volumes
+db_data/
+*.sqlite
+*.db
+
+# Lockfiles (optional to ignore)
+# pnpm-lock.yaml
+
+# Runtime
+*.pid
+*.seed
+
+# Coverage
+coverage/
+
+# Misc
+*.log

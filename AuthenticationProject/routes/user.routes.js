@@ -1,14 +1,31 @@
 import express from 'express';
 import db from '../db/index.js';
-import { usersTable,userSessions } from '../db/schema.js';
+import { usersTable, userSessions } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { createHmac, randomBytes } from 'node:crypto';
+import { error } from 'node:console';
+
 
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    res.send('User route');
+router.patch('/', async (req, res) => {
+    const user = req.user;
+    if (!user) {
+        return res.status(401).json({ error: "you are not logged in" })
+    }
+    const { name } = req.body;
+    await db.update(usersTable).set({ name }).where(eq(usersTable.id, user.id))
+    return res.json({ status: 'success' });
+})
+
+router.get('/', async (req, res) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(401).json({ error: 'no session id found || not logged in || line 30' });
+    }
+    return res.json({ user });
 })
 
 router.post('/signup', async (req, res) => {
@@ -34,29 +51,29 @@ router.post('/signup', async (req, res) => {
         salt
     }).returning({ id: usersTable.id });
     console.log(user);
-    
+
     return res.status(201).json({ status: 'success', data: { userId: user.id } });
 })
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    const [user]=await db.select().from(usersTable).where(eq(usersTable.email,email));
-    if(!user){
-        return  res.status(404).json({error:'Invalid user details'});
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (!user) {
+        return res.status(404).json({ error: 'Invalid user details' });
     }
 
     const hashedPassword = createHmac('sha256', user.salt).update(password).digest('hex');
-    if(hashedPassword!==user.password){
+    if (hashedPassword !== user.password) {
         // console.log(user.password);
         // console.log(hashedPassword);        
-        return res.status(401).json({error:'Invalid Password'});
+        return res.status(401).json({ error: 'Invalid Password' });
     }
     //creating new Session
-    const [session]=await db.insert(userSessions).values({
-        userId:user.id,
-    }).returning({id:userSessions.id});
+    const [session] = await db.insert(userSessions).values({
+        userId: user.id,
+    }).returning({ id: userSessions.id });
 
-    return res.json({status:'success',data:{userId:user.id,sessionId:session.id}});
+    return res.json({ status: 'success', data: { userId: user.id, sessionId: session.id } });
 })
 
 export default router;
