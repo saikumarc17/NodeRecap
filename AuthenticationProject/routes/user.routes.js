@@ -3,29 +3,21 @@ import db from '../db/index.js';
 import { usersTable, userSessions } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { createHmac, randomBytes } from 'node:crypto';
-import { error } from 'node:console';
-
+import jwt from 'jsonwebtoken';
+import { ensureAuthenticated } from '../middlewares/auth.middleware.js';
 
 
 const router = express.Router();
 
-router.patch('/', async (req, res) => {
-    const user = req.user;
-    if (!user) {
-        return res.status(401).json({ error: "you are not logged in" })
-    }
+router.patch('/', ensureAuthenticated, async (req, res) => {
+
     const { name } = req.body;
     await db.update(usersTable).set({ name }).where(eq(usersTable.id, user.id))
     return res.json({ status: 'success' });
 })
 
-router.get('/', async (req, res) => {
-    const user = req.user;
-
-    if (!user) {
-        return res.status(401).json({ error: 'no session id found || not logged in || line 30' });
-    }
-    return res.json({ user });
+router.get('/', ensureAuthenticated, async (req, res) => {
+    return res.json({ user: req.user });
 })
 
 router.post('/signup', async (req, res) => {
@@ -75,5 +67,34 @@ router.post('/login', async (req, res) => {
 
     return res.json({ status: 'success', data: { userId: user.id, sessionId: session.id } });
 })
+
+router.post('/loginJWT', async (req, res) => {
+    const { email, password } = req.body;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (!user) {
+        return res.status(404).json({ error: 'Invalid user details' });
+    }
+
+    const hashedPassword = createHmac('sha256', user.salt).update(password).digest('hex');
+    if (hashedPassword !== user.password) {
+        // console.log(user.password);
+        // console.log(hashedPassword);        
+        return res.status(401).json({ error: 'Invalid Password' });
+    }
+
+    //creating jwt token
+
+    const payload = {
+        id: user.id,
+        email: user.email,
+        name: user.name
+    }
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET);
+
+    return res.json({ status: 'success', token });
+})
+
+
 
 export default router;
