@@ -40,7 +40,8 @@ router.post('/signup', async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        salt
+        salt,
+        role:usersTable.role
     }).returning({ id: usersTable.id });
     console.log(user);
 
@@ -55,9 +56,7 @@ router.post('/login', async (req, res) => {
     }
 
     const hashedPassword = createHmac('sha256', user.salt).update(password).digest('hex');
-    if (hashedPassword !== user.password) {
-        // console.log(user.password);
-        // console.log(hashedPassword);        
+    if (hashedPassword !== user.password) {     
         return res.status(401).json({ error: 'Invalid Password' });
     }
     //creating new Session
@@ -70,7 +69,15 @@ router.post('/login', async (req, res) => {
 
 router.post('/loginJWT', async (req, res) => {
     const { email, password } = req.body;
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const [user] = await db.select({
+        id:usersTable.id,
+        email:usersTable.email,
+        name:usersTable.name,
+        salt:usersTable.salt,
+        role:usersTable.role,
+        password:usersTable.password
+    }).from(usersTable).where(eq(usersTable.email, email));
+
     if (!user) {
         return res.status(404).json({ error: 'Invalid user details' });
     }
@@ -87,7 +94,8 @@ router.post('/loginJWT', async (req, res) => {
     const payload = {
         id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        role:user.role
     }
 
     const token = jwt.sign(payload, process.env.JWT_SECRET);
